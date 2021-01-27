@@ -4,23 +4,27 @@ namespace Lockpicking
 {
     public class PickMover : MonoBehaviour
     {
-        [SerializeField] private float horizontalSensitivity;
-        [SerializeField] private float rotationSensitivity;
-        [SerializeField] private float minXPosition;
-        [SerializeField] private float maxXPosition;
-        [SerializeField] private float minHeadAngle;
-        [SerializeField] private float maxHeadAngle;
+        [SerializeField] private float horizontalSensitivity = 1f;
+        [SerializeField] private float rotationSensitivity = 1f;
+        [SerializeField] private float minXPosition = -20f;
+        [SerializeField] private float maxXPosition = 20f;
+        [SerializeField] private float minHeadAngle = 45f;
+        [SerializeField] private float maxHeadAngle = 180f;
 
         private new Rigidbody rigidbody;
+        private float deltaX, deltaY;
 
         private void Awake() => rigidbody = GetComponent<Rigidbody>();
         private void Start() => Cursor.lockState = CursorLockMode.Locked;
 
+        private void Update()
+        {
+            deltaX = Input.GetAxis("Mouse X");
+            deltaY = Input.GetAxis("Mouse Y");
+        }
+
         private void FixedUpdate()
         {
-            float deltaX = Input.GetAxis("Mouse X");
-            float deltaY = Input.GetAxis("Mouse Y");
-
             Vector3 position = transform.position;
             float targetX = position.x + (deltaX * horizontalSensitivity * Time.fixedDeltaTime);
             float actualX = Mathf.Clamp(targetX, minXPosition, maxXPosition);
