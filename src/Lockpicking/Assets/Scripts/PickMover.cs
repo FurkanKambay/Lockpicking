@@ -1,3 +1,4 @@
+using Lockpicking.Helpers;
 using UnityEngine;
 
 namespace Lockpicking
@@ -28,7 +29,7 @@ namespace Lockpicking
             Vector3 position = transform.position;
             float targetX = position.x + (deltaX * horizontalSensitivity * Time.fixedDeltaTime);
             float actualX = Mathf.Clamp(targetX, minXPosition, maxXPosition);
-            rigidbody.MovePosition(new Vector3(actualX, position.y, position.z));
+            rigidbody.MovePosition(position.With(x: actualX));
 
             float rotateAmount = deltaY * rotationSensitivity * Time.fixedDeltaTime;
             Quaternion requestedAngle = rigidbody.rotation * Quaternion.Euler(Vector3.forward * rotateAmount);

@@ -1,3 +1,4 @@
+using Lockpicking.Helpers;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -5,11 +6,10 @@ namespace Lockpicking
 {
     public class PinPair : MonoBehaviour
     {
-        [SerializeField] private float keyPinLength, driverPinLength;
         [SerializeField] private Text textStatus;
 
-        [HideInInspector] public int PinRadius;
-        public float PinPosition => keyPinRigidbody.position.y;
+        public PinState State { get; private set; }
+        internal int RequiredTorque;
 
         public float KeyPinLength
         {
@@ -36,13 +36,14 @@ namespace Lockpicking
         private SpringJoint keyPinSpring, driverPinSpring;
 
         private TumblerLock tumblerLock;
-        private PinStatus pinStatus;
+        private float keyPinLength, driverPinLength;
+        private float KeyPinPosition => keyPinRigidbody.position.y;
 
         private void Awake()
         {
             tumblerLock = GetComponentInParent<TumblerLock>();
-            keyPin = transform.GetChild(0).GetChild(0);
-            driverPin = transform.GetChild(1).GetChild(0);
+            keyPin = transform.GetChild(0);
+            driverPin = transform.GetChild(1);
 
             keyPinRigidbody = keyPin.GetComponent<Rigidbody>();
             driverPinRigidbody = driverPin.GetComponent<Rigidbody>();
@@ -50,66 +51,62 @@ namespace Lockpicking
             driverPinSpring = driverPin.GetComponent<SpringJoint>();
         }
 
-        private void Update()
-        {
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                if (pinStatus == PinStatus.Set && this == tumblerLock.CurrentBindingPin)
-                {
-                    driverPinSpring.connectedBody = null;
-                    textStatus.color = Color.green;
-                    tumblerLock.SetNextPin();
-                }
-            }
-        }
-
         private void FixedUpdate()
         {
             float shear = tumblerLock.ShearLine - (keyPinLength / 2f);
 
-            if (Mathf.Abs(shear - PinPosition) < tumblerLock.ShearLineTolerance)
+            if (Mathf.Abs(shear - KeyPinPosition) < tumblerLock.ShearLineTolerance)
             {
-                pinStatus = PinStatus.Set;
+                State = PinState.Set;
                 textStatus.text = "set";
             }
-            else if (PinPosition < shear)
+            else if (KeyPinPosition < shear)
             {
-                pinStatus = PinStatus.Unset;
+                State = PinState.Unset;
                 textStatus.text = "unset";
             }
             else
             {
-                pinStatus = PinStatus.Overset;
+                State = PinState.Overset;
                 textStatus.text = "overset";
             }
         }
 
+        public void Set()
+        {
+            textStatus.color = Color.green;
+
+            driverPinSpring.connectedBody = null;
+            driverPin.position = driverPinRigidbody.position.With(y: tumblerLock.ShearLine + (driverPinLength / 2f));
+        }
+
+        public void Reset()
+        {
+            textStatus.color = Color.red;
+
+            float driverY = KeyPinPosition + (keyPinLength / 2f) + (driverPinLength / 2f) + .04f;
+            driverPin.position = driverPinRigidbody.position.With(y: driverY);
+            driverPinSpring.connectedBody = keyPinRigidbody;
+            driverPinSpring.connectedAnchor = Vector3.up * driverY;
+        }
+
         private void SetupPinLengths()
         {
-            Vector3 keyPinPosition = keyPinRigidbody.position;
-            Vector3 driverPinPosition = driverPinRigidbody.position;
-            Vector3 anchor = keyPinSpring.connectedAnchor;
+            keyPin.localScale = new Vector3(.6f, keyPinLength, .6f);
+            driverPin.localScale = new Vector3(.6f, driverPinLength, .6f);
 
             float keyY = keyPinLength / 2f;
-            float driverY = keyPinLength + ((driverPinLength * .5f) + .05f);
+            keyPin.position = keyPinRigidbody.position.With(y: keyY);
+            keyPinSpring.connectedAnchor = keyPinSpring.connectedAnchor.With(y: keyY);
 
-            keyPin.localScale = new Vector3(1f, keyPinLength, 1f);
-            keyPin.position = new Vector3(keyPinPosition.x, keyY, keyPinPosition.z);
-            keyPinSpring.connectedAnchor = new Vector3(anchor.x, keyY, anchor.z);
-
-            driverPin.localScale = new Vector3(1f, driverPinLength, 1f);
-            driverPin.position = new Vector3(driverPinPosition.x, driverY, driverPinPosition.z);
-            driverPinSpring.connectedAnchor = new Vector3(anchor.x, driverY, anchor.z);
-
-            driverPinSpring.connectedBody = keyPinRigidbody;
-            textStatus.color = Color.red;
+            Reset();
         }
+    }
 
-        enum PinStatus
-        {
-            Unset,
-            Set,
-            Overset
-        }
+    public enum PinState
+    {
+        Unset,
+        Set,
+        Overset
     }
 }

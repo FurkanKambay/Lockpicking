@@ -1,6 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using Lockpicking.Helpers;
 using UnityEngine;
+using UnityEngine.UI;
+using Random = UnityEngine.Random;
 
 namespace Lockpicking
 {
@@ -9,53 +13,95 @@ namespace Lockpicking
         public float ShearLine;
         public float ShearLineTolerance;
 
-        public List<PinPair> PinPairs => pinPairs;
-        public int PinCount => pinPairs.Count;
-        public PinPair CurrentBindingPin => pinPairs[bindingOrder[currentBindingPin]];
-        public bool IsPicked { get; private set; }
+        [SerializeField] private Text textTorque;
 
-        private List<PinPair> pinPairs;
-        private int[] bindingOrder;
-        private int currentBindingPin;
+        public List<PinPair> PinPairs { get; private set; }
+        public int PinCount => PinPairs.Count;
+        public PinPair CurrentBindingPin => PinPairs[BindingProgression];
+
+        public int AppliedTorque
+        {
+            get => appliedTorque;
+            private set => textTorque.text = $"Torque: {appliedTorque = value}";
+        }
+
+        public int BindingProgression
+        {
+            get => bindingProgression;
+            private set
+            {
+                bindingProgression = value;
+                IsPicked = value >= PinCount;
+            }
+        }
+
+        public bool IsPicked
+        {
+            get => isPicked;
+            private set
+            {
+                isPicked = value;
+                if (value) Debug.Log("Lock is picked!");
+            }
+        }
+
+        private int appliedTorque;
+        private int bindingProgression;
+        private bool isPicked;
 
         private void OnEnable()
         {
-            pinPairs = transform.GetComponentsInChildren<PinPair>().ToList();
+            PinPair[] pairs = transform.GetComponentsInChildren<PinPair>();
+            IList<int> randomTorques = Enumerable.Range(1, 10).ToList().Shuffle();
 
-            foreach (PinPair t in pinPairs)
+            for (int i = 0; i < pairs.Length; i++)
             {
-                t.PinRadius = GenerateUnseenRandom();
-                t.KeyPinLength = 0.5f + (Random.Range(1, 10) / 10f);
-                t.DriverPinLength = 1f + (Random.Range(1, 5) / 5f);
+                PinPair pinPair = pairs[i];
+                pinPair.RequiredTorque = randomTorques[i];
+                pinPair.KeyPinLength = 0.5f + (Random.Range(1, 7) / 10f);
+                pinPair.DriverPinLength = 1f + (Random.Range(1, 5) / 5f);
             }
 
-            bindingOrder = pinPairs.OrderByDescending(p => p.PinRadius)
-                    .Select(p => pinPairs.IndexOf(p))
-                    .ToArray();
+            PinPairs = pairs.OrderBy(p => p.RequiredTorque).ToList();
+            BindingProgression = 0;
+            AppliedTorque = 0;
+            IsPicked = false;
         }
 
-        public void SetNextPin()
+        private void Update()
         {
-            if (IsPicked) return;
+            if (!IsPicked && Input.GetKeyDown(KeyCode.D))
+                IncreaseTorque();
+            else if (Input.GetKeyDown(KeyCode.A))
+                DecreaseTorque();
+        }
 
-            if (currentBindingPin + 1 >= PinCount)
+        private void IncreaseTorque()
+        {
+            int targetTorque = Math.Min(AppliedTorque + 1, 10);
+
+            if (targetTorque < CurrentBindingPin.RequiredTorque)
+                AppliedTorque = targetTorque;
+            else if (targetTorque == CurrentBindingPin.RequiredTorque && CurrentBindingPin.State == PinState.Set)
             {
-                IsPicked = true;
-                Debug.Log("Lock is picked!");
-                return;
+                CurrentBindingPin.Set();
+                AppliedTorque = targetTorque;
+                ++BindingProgression;
             }
-
-            ++currentBindingPin;
         }
 
-        private int GenerateUnseenRandom()
+        private void DecreaseTorque()
         {
-            int number = 0;
+            AppliedTorque = Math.Max(AppliedTorque - 1, 0);
 
-            while (pinPairs.Any(p => p.PinRadius == number))
-                number = Random.Range(1, 10);
-
-            return number;
+            for (int i = 0; i < PinCount; i++)
+            {
+                if (AppliedTorque < PinPairs[i].RequiredTorque && i < BindingProgression)
+                {
+                    PinPairs[i].Reset();
+                    BindingProgression = Math.Max(BindingProgression - 1, 0);
+                }
+            }
         }
     }
 }
