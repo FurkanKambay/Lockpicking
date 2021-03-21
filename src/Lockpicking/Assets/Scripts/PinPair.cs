@@ -84,7 +84,7 @@ namespace Lockpicking
         {
             textStatus.color = Color.red;
 
-            float driverY = KeyPinPosition + (keyPinLength / 2f) + (driverPinLength / 2f) + .04f;
+            float driverY = KeyPinPosition + (keyPinLength / 2f + .5f) + (driverPinLength / 2f + .4f) + .04f;
             driverPin.position = driverPinRigidbody.position.With(y: driverY);
             driverPinSpring.connectedBody = keyPinRigidbody;
             driverPinSpring.connectedAnchor = Vector3.up * driverY;
@@ -92,10 +92,12 @@ namespace Lockpicking
 
         private void SetupPinLengths()
         {
-            keyPin.localScale = new Vector3(.6f, keyPinLength, .6f);
-            driverPin.localScale = new Vector3(.6f, driverPinLength, .6f);
+            PinStitcher key = keyPin.GetComponent<PinStitcher>();
+            key.Stitch(keyPinLength, true);
+            driverPin.GetComponent<PinStitcher>().Stitch(driverPinLength, false);
 
-            float keyY = keyPinLength / 2f;
+            // float keyY = keyPinLength / 2f;
+            float keyY = key.ActualHeight / 2f;
             keyPin.position = keyPinRigidbody.position.With(y: keyY);
             keyPinSpring.connectedAnchor = keyPinSpring.connectedAnchor.With(y: keyY);
 

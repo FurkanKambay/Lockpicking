@@ -58,8 +58,8 @@ namespace Lockpicking
             {
                 PinPair pinPair = pairs[i];
                 pinPair.RequiredTorque = randomTorques[i];
-                pinPair.KeyPinLength = 0.5f + (Random.Range(1, 7) / 10f);
-                pinPair.DriverPinLength = 1f + (Random.Range(1, 5) / 5f);
+                pinPair.KeyPinLength = .6f + (Random.Range(1, 7) / 10f);
+                pinPair.DriverPinLength = .5f;
             }
 
             PinPairs = pairs.OrderBy(p => p.RequiredTorque).ToList();
